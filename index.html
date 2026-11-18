@@ -12,7 +12,10 @@ header{background:#E50693;color:#fff;padding:28px max(16px,4vw)}
 header small{letter-spacing:.12em;text-transform:uppercase;opacity:.85;font-size:12px}
 header h1{margin:4px 0 6px;font-size:clamp(24px,4vw,36px);line-height:1.15}
 header p{margin:0;max-width:70ch;opacity:.95}
-main{max-width:1200px;margin:0 auto;padding:20px max(16px,3vw) 48px;display:grid;gap:20px}
+main{max-width:1200px;margin:0 auto;padding:20px max(16px,3vw) 48px;display:grid;grid-template-columns:minmax(0,1fr);gap:20px}
+main>*{min-width:0}
+.chartwrap,.grid>*{min-width:0}
+body{overflow-x:hidden}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px}
 h2{margin:0 0 4px;font-size:18px;color:var(--pink)}
 .sub{color:var(--muted);margin:0 0 12px;font-size:13.5px}
@@ -85,6 +88,33 @@ details{font-size:14px}summary{cursor:pointer;color:var(--pink);font-weight:600}
 .legend div{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .chip{margin-right:0;white-space:nowrap}
 .lens td:last-child .chip{margin-right:10px}
+@media(max-width:620px){
+ header{padding:20px 16px}
+ main{padding:14px 12px 36px;gap:16px}
+ .panel{padding:14px}
+ h2{font-size:17px}
+ .insight{grid-template-columns:1fr 1fr;gap:10px}
+ .kpi b{font-size:21px}.kpi span{font-size:12px}
+ .tabs{width:100%}.tabs button{flex:1;padding:11px 8px}
+ .gb{padding:8px 10px 10px}.gb b{font-size:14px}.gb .st{font-size:12px}
+ .av.gph{font-size:34px}
+ th,td{padding:7px 6px}
+ .bar{grid-template-columns:84px 1fr 34px}
+ .cmp b{font-size:20px}
+ input[type=search]{max-width:none}
+ .steps{grid-template-columns:1fr}
+ .legend div{gap:8px}
+ .lens td:last-child,.lens th:last-child{min-width:0;white-space:nowrap}
+ .lens td:last-child .sub{display:none}
+ .lens td{padding:6px 4px}
+ .lens th{font-size:10.5px;letter-spacing:0;padding:6px 4px}
+ .lens td:nth-child(2){white-space:normal;line-height:1.2;font-size:13.5px}
+ .lens .nm{gap:6px}
+ .lens .av.sm{width:26px;height:26px;font-size:10px}
+ .lens .chip{margin-right:0;padding:2px 8px;font-size:11.5px}
+ .lens th:nth-child(4),.lens td:nth-child(4),.lens th:nth-child(5),.lens td:nth-child(5){display:none}
+}
+@media(max-width:380px){.insight{grid-template-columns:1fr}.gallery{gap:8px}}
 footer{text-align:center;color:var(--muted);font-size:12.5px;padding:0 16px 28px}
 </style>
 </head>
@@ -190,23 +220,24 @@ function drawGallery() {
 function pctile(arr, key, v) { return arr.filter(x => x[key] <= v).length / arr.length; }
 
 function drawChart() {
-  const rows = D[role], W = 640, H = 420, m = {l: 54, r: 16, t: 14, b: 46};
+  const rows = D[role], wrapW = Math.round($('#chart').parentElement.clientWidth) || 640, mob = wrapW < 520;
+  const W = Math.max(280, wrapW), H = mob ? 330 : 420, m = {l: mob ? 44 : 54, r: 12, t: 14, b: mob ? 44 : 46}, xs_ = mob ? 10 : 5;
   const xs = rows.map(r => r.cons * 100), ys = rows.map(r => r.level);
   const x0 = Math.floor(Math.min(...xs) / 5) * 5, x1 = Math.ceil(Math.max(...xs) / 5) * 5;
   const y0 = Math.floor(Math.min(...ys) * 20) / 20, y1 = Math.ceil(Math.max(...ys) * 20) / 20;
   const X = v => m.l + (v - x0) / (x1 - x0) * (W - m.l - m.r), Y = v => H - m.b - (v - y0) / (y1 - y0) * (H - m.t - m.b);
-  const maxN = Math.max(...rows.map(r => r.nP)), R = n => 4 + 8 * Math.sqrt(n / maxN);
+  const maxN = Math.max(...rows.map(r => r.nP)), R = n => (mob ? 3 : 4) + (mob ? 6 : 8) * Math.sqrt(n / maxN);
   let s = '';
-  for (let v = x0; v <= x1; v += 5) s += `<line x1="${X(v)}" x2="${X(v)}" y1="${m.t}" y2="${H - m.b}" stroke="#f4e6ef"/><text x="${X(v)}" y="${H - m.b + 16}" text-anchor="middle">${v}%</text>`;
+  for (let v = Math.ceil(x0 / xs_) * xs_; v <= x1; v += xs_) s += `<line x1="${X(v)}" x2="${X(v)}" y1="${m.t}" y2="${H - m.b}" stroke="#f4e6ef"/><text x="${X(v)}" y="${H - m.b + 16}" text-anchor="middle">${v}%</text>`;
   for (let v = y0; v <= y1 + 1e-9; v += 0.05) s += `<line x1="${m.l}" x2="${W - m.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="${Math.abs(v) < 1e-9 ? '#a99aa6' : '#f4e6ef'}"/><text x="${m.l - 8}" y="${Y(v) + 4}" text-anchor="end">${v.toFixed(2)}</text>`;
-  s += `<text x="${(m.l + W - m.r) / 2}" y="${H - 8}" text-anchor="middle">Consistency: pressure innings or spells with positive impact</text>`;
-  s += `<text transform="translate(14 ${(m.t + H - m.b) / 2}) rotate(-90)" text-anchor="middle">Win probability added per 100 pressure balls</text>`;
+  s += `<text x="${(m.l + W - m.r) / 2}" y="${H - 8}" text-anchor="middle">${mob ? 'Consistency (positive innings %)' : 'Consistency: pressure innings or spells with positive impact'}</text>`;
+  s += `<text transform="translate(14 ${(m.t + H - m.b) / 2}) rotate(-90)" text-anchor="middle">${mob ? 'Win prob. added / 100 balls' : 'Win probability added per 100 pressure balls'}</text>`;
   const ordered = [...rows].sort((a, b) => (a.rank <= 10) - (b.rank <= 10));
   ordered.forEach(r => {
     const top = r.rank <= 10, on = sel && sel.pid === r.pid;
     s += `<circle class="dot" data-pid="${r.pid}" cx="${X(r.cons * 100)}" cy="${Y(r.level)}" r="${R(r.nP)}" fill="${top ? PINK : GREY}" fill-opacity="${top ? .85 : .7}" stroke="${on ? BLUE : '#fff'}" stroke-width="${on ? 3 : 1}"/>`;
   });
-  rows.filter(r => r.rank <= 3).forEach(r => { const px = X(r.cons * 100), right = px > W - 90; s += `<text x="${right ? px - 12 : px + 12}" y="${Y(r.level) - 8}" text-anchor="${right ? 'end' : 'start'}" style="fill:${BLUE};font-weight:700">${r.name.split(' ').slice(-1)[0]}</text>`; });
+  rows.filter(r => r.rank <= (mob ? 1 : 3)).forEach(r => { const px = X(r.cons * 100), right = px > W - 80; s += `<text x="${right ? px - 12 : px + 12}" y="${Y(r.level) - 8}" text-anchor="${right ? 'end' : 'start'}" style="fill:${BLUE};font-weight:700">${r.name.split(' ').slice(-1)[0]}</text>`; });
   const svg = $('#chart'); svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.innerHTML = s;
   const tip = $('#tip'), wrap = svg.parentElement;
   svg.querySelectorAll('.dot').forEach(c => {
@@ -237,13 +268,20 @@ function drawDetail() {
 }
 
 function drawTable() {
-  const q = $('#q').value.toLowerCase(), rows = D[role].filter(r => r.name.toLowerCase().includes(q)).sort((a, b) => (a[sortKey] > b[sortKey] ? 1 : -1) * sortDir);
+  const q = $('#q').value.toLowerCase(), rows = D[role].filter(r => r.name.toLowerCase().includes(q)).sort((a, b) => {
+    const x = a[sortKey], y = b[sortKey];
+    if (x == null && y == null) return a.rank - b.rank;
+    if (x == null) return 1;
+    if (y == null) return -1;
+    const c = typeof x === 'string' ? x.localeCompare(y) : x - y;
+    return c !== 0 ? c * sortDir : a.rank - b.rank;
+  });
   const cols = role === 'bat'
     ? [['rank', '#'], ['name', 'Batter'], ['score', 'Score'], ['level', 'Level'], ['cons', 'Consist.'], ['res', 'Resil.'], ['sr', 'SR press.'], ['sr_normal', 'SR ord.'], ['nP', 'Balls']]
     : [['rank', '#'], ['name', 'Bowler'], ['score', 'Score'], ['level', 'Level'], ['cons', 'Consist.'], ['res', 'Resil.'], ['econ', 'Econ press.'], ['econ_normal', 'Econ ord.'], ['nP', 'Balls']];
   const fmt = (k, v, r) => k === 'name' ? `<div class="nm">${avatar(v, 'sm')}${v}</div>` : k === 'cons' ? pct(v) : ['sr', 'sr_normal', 'nP'].includes(k) ? f(v, 0) : k === 'rank' ? v : typeof v === 'number' ? f(v) : v;
   $('#tbl').innerHTML = `<thead><tr>${cols.map(c => `<th data-k="${c[0]}">${c[1]}${sortKey === c[0] ? (sortDir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr data-pid="${r.pid}" class="${r.rank <= 10 ? 'top' : ''} ${sel && sel.pid === r.pid ? 'sel' : ''}">${cols.map(c => `<td>${fmt(c[0], r[c[0]], r)}</td>`).join('')}</tr>`).join('')}</tbody>`;
-  $('#tbl').querySelectorAll('th').forEach(h => h.onclick = () => { const k = h.dataset.k; sortDir = sortKey === k ? -sortDir : 1; sortKey = k; drawTable(); });
+  $('#tbl').querySelectorAll('th').forEach(h => h.onclick = () => { const k = h.dataset.k; if (sortKey === k) sortDir = -sortDir; else { sortKey = k; sortDir = (k === 'rank' || k === 'name' || k === 'econ' || k === 'econ_normal') ? 1 : -1; } drawTable(); $('#tbl').parentElement.scrollTop = 0; });
   $('#tbl').querySelectorAll('tbody tr').forEach(t => t.onclick = () => select(D[role].find(x => x.pid == t.dataset.pid)));
 }
 
@@ -255,6 +293,7 @@ function setRole(r) {
   drawGallery(); drawChart(); drawDetail(); drawTable(); drawLens();
 }
 $('#tBat').onclick = () => setRole('bat'); $('#tBowl').onclick = () => setRole('bowl'); $('#q').oninput = drawTable;
+let rzT; window.addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(drawChart, 150); });
 setRole('bat');
 </script>
 </body>
